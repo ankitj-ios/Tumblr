@@ -17,6 +17,10 @@ class PhotosViewController: UIViewController, UITableViewDelegate,UITableViewDat
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        let refreshControl = UIRefreshControl();
+        refreshControl.addTarget(self, action: #selector(refreshControlAction(_:)), forControlEvents: UIControlEvents.ValueChanged)
+        tableView.insertSubview(refreshControl, atIndex: 0)
+        
         tableView.dataSource = self
         tableView.delegate = self
         let clientId = "Q6vHoaVm5L1u2ZAW1fqv3Jw48gFzYVg9P0vH0VHl3GVy6quoGV"
@@ -66,6 +70,37 @@ class PhotosViewController: UIViewController, UITableViewDelegate,UITableViewDat
         let sourceTumblrFeedCell = sender as! TumblrFeedTableViewCell
         let destinationPhotoDetailsViewController = segue.destinationViewController as! PhotoDetailsViewController
         destinationPhotoDetailsViewController.detailedImage = sourceTumblrFeedCell.feedImageView.image
+    }
+    
+    func refreshControlAction(refreshControl: UIRefreshControl) {
+        let clientId = "Q6vHoaVm5L1u2ZAW1fqv3Jw48gFzYVg9P0vH0VHl3GVy6quoGV"
+        let postsCategory : [String] = ["humansofnewyork.tumblr.com", "peacecorps.tumblr.com", "pitchersandpoets.tumblr.com"]
+        let postsCategoryIndex = randomNumber(0...2)
+        let url = NSURL(string: "https://api.tumblr.com/v2/blog/\(postsCategory[postsCategoryIndex])/posts/photo?api_key=\(clientId)")
+        let request = NSURLRequest(URL: url!)
+        let session = NSURLSession(configuration: NSURLSessionConfiguration.defaultSessionConfiguration(),
+                                   delegate: nil, delegateQueue: NSOperationQueue.mainQueue())
+        let task : NSURLSessionDataTask = session.dataTaskWithRequest(request,
+          completionHandler: { (dataOrNil, response, error) in
+            if let data = dataOrNil {
+                if let responseDictionary = try! NSJSONSerialization.JSONObjectWithData(data,
+                    options:[]) as? NSDictionary {
+                    //                    NSLog("response: \(responseDictionary)")
+                    let response = responseDictionary["response"] as! NSDictionary
+                    self.posts = response["posts"] as! [NSDictionary]
+                    self.tableView.reloadData()
+                    refreshControl.endRefreshing()
+                }
+                
+            }
+        });
+        task.resume()
+    }
+    
+    func randomNumber(range: Range<Int> = 0...2) -> Int {
+        let min = range.startIndex
+        let max = range.endIndex
+        return Int(arc4random_uniform(UInt32(max - min))) + min
     }
 }
 
